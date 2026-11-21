@@ -1,0 +1,30 @@
+# Backend
+backend/.bundle
+backend/log/*
+backend/tmp/*
+backend/storage/*
+!backend/log/.keep
+!backend/tmp/.keep
+!backend/storage/.keep
+backend/config/master.key
+backend/config/credentials/*.key
+backend/.env*
+
+# Frontend
+frontend/node_modules
+frontend/build
+frontend/.svelte-kit
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+frontend/vite.config.ts.timestamp-*
+
+# Android (Capacitor) build output
+android/app/build
+android/.gradle
+
+.DS_Store
+
+# Deploy secrets (server)
+/.env
+DOC-20261109-WA0007.pdf

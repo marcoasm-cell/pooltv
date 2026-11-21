@@ -1,0 +1,112 @@
+en:
+  app_errors:
+    not_found: "Not found"
+    fpb_unavailable: "The FPB portal is not answering. Try again later."
+    fpb_unreadable: "The FPB portal answered in an unexpected format."
+    fpb_unknown_variant: "Unknown FPB competition type"
+    not_signed_in: "Not signed in"
+    admins_only: "Platform admins only"
+    owners_only: "Club owners only"
+    admin_user_locked: "This user is a platform admin; only another admin can change them"
+    cannot_remove_own_account: "You cannot delete your own account"
+    wrong_credentials: "Wrong email or password"
+    unknown_table: "Unknown table"
+    unknown_player: "Unknown player"
+    unknown_side: "Unknown side %{side}"
+    unknown_position: "Unknown position"
+    team_in_use: "Team has played tournaments and cannot be removed"
+    player_in_use: "Player has played matches and cannot be removed"
+    game_type_in_use: "Game type is in use"
+    cannot_remove_self: "You cannot remove yourself"
+    table_busy: "%{table} is playing a match"
+    bad_image: "The logo must be a PNG, JPEG or WebP image up to 5 MB"
+    only_scheduled_change: "Only scheduled matches can change"
+    tournament_match_delete: "Tournament matches cannot be deleted"
+    live_match_delete: "A live match cannot be deleted"
+    lineup_by_substitution: "This team match changes players through substitutions"
+    only_name_after_start: "Only the name can change once started"
+    reset_before_delete: "Reset the tournament before deleting it"
+    tournament_match_live: "A match of this tournament is being played"
+    tournament_not_running: "The tournament is not running"
+    tournament_ended: "The tournament was ended early"
+    entries_before_start: "Entries can only change before the start"
+    seeds_before_start: "Seeds can only change before the start"
+    pick_two_teams: "Pick two different teams"
+    race_range: "The race must be between 1 and %{games}"
+    team_size: "Each team plays with %{count} players"
+    max_reserves: "At most %{count} replacements per team"
+    player_twice: "A player appears twice in the %{side} lineup"
+    not_on_roster: "Every player must be on %{team}'s roster"
+    player_both_teams: "A player cannot play for both teams"
+    only_team_rubbers: "Only team matches have rubbers"
+    fixture_status: "Fixture is %{status}"
+    no_lineup: "This match has no lineup to change"
+    already_in_position: "That player is already playing position %{position}"
+    return_own_position: "A replaced player can only return to position %{position}"
+    not_a_reserve: "That player is not a replacement of %{team}"
+    fixture_match_live: "A match of this fixture is being played"
+    next_fixture_started: "The next fixture has already started"
+    lineup_before_start: "Lineup can only change before the match starts"
+    players_per_side:
+      one: "%{kind} needs %{count} player per side"
+      other: "%{kind} needs %{count} players per side"
+    player_cannot_play: "Player %{player} cannot play for %{side}"
+    match_finished: "Match already finished"
+    live_match_table: "A live match cannot change table"
+    match_status: "Match is %{status}"
+    match_needs_table: "Match needs a table"
+    sides_need_players: "Both sides need their players"
+    fixture_not_ready: "Fixture is not ready"
+    table_already_playing: "%{table} is already playing a match"
+    player_busy: "%{player} is already playing on %{table}"
+    another_table: "another table"
+    match_not_live: "Match is not live"
+    zero_points: "Points cannot be 0"
+    nothing_to_undo: "Nothing to undo"
+    tournament_started: "Tournament already started"
+    min_entries: "Needs at least 2 entries"
+    friendly_entries: "A friendly has exactly 2 entries"
+  sides:
+    home: "home"
+    away: "away"
+  kinds:
+    singles: "Singles"
+    doubles: "Doubles"
+  fixture_statuses:
+    pending: "pending"
+    ready: "ready"
+    live: "live"
+    finished: "finished"
+    void: "void"
+  match_statuses:
+    scheduled: "scheduled"
+    live: "live"
+    finished: "finished"
+  match:
+    tbd: "TBD"
+  activerecord:
+    errors:
+      models:
+        entry:
+          attributes:
+            team:
+              required_entry: "is required"
+              other_account: "belongs to another account"
+              already_entered: "is already entered"
+            player:
+              required_entry: "is required"
+              other_account: "belongs to another account"
+              already_entered: "is already entered"
+        match:
+          attributes:
+            pool_table:
+              other_account: "belongs to another account"
+        tournament:
+          attributes:
+            game_type:
+              unavailable: "is not available"
+            team_match_format:
+              no_rubbers: "needs at least one rubber"
+              bad_rubbers: "rubbers must be singles or doubles"
+            pool_table_ids:
+              other_account: "belong to another account"

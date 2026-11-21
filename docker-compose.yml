@@ -1,0 +1,31 @@
+# Production: Postgres + Rails backend. nginx on the host serves the frontend,
+# handles HTTPS and proxies to the backend on 127.0.0.1:3010 (see nginx.conf).
+# Data lives in the named volumes below and survives every deploy.
+# Never run `docker compose down -v`: it deletes the volumes (database and uploads).
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pool_tv
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on: [db]
+    environment:
+      RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
+      POOL_TV_DATABASE_PASSWORD: ${DB_PASSWORD}
+      PGHOST: db                 # config/database.yml has no host for production
+      SOLID_QUEUE_IN_PUMA: "1"   # runs background jobs (FpbPhotosJob) inside Puma
+    ports:
+      - "127.0.0.1:3010:3000"    # host port 3010 -> container 3000; only nginx can reach it
+    volumes:
+      - storage:/rails/storage   # Active Storage: logos, sponsors, FPB photos
+
+volumes:
+  pgdata:
+  storage:
