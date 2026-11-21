@@ -21,11 +21,11 @@ echo "==> Pulling latest code"
 git pull --ff-only
 
 echo "==> Building frontend"
-(
-  cd frontend
-  npm ci
-  npm run build
-)
+# Built inside a node:22 container so the server's own Node (shared with other
+# projects) is never touched or required.
+docker run --rm \
+  -v "$PWD/frontend":/app -w /app \
+  node:22 sh -c "npm ci && npm run build"
 
 echo "==> Rebuilding and restarting backend"
 docker compose up -d --build backend
