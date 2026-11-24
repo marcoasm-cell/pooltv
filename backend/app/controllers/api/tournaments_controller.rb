@@ -5,6 +5,8 @@ class Api::TournamentsController < ApplicationController
   def index
     tournaments = current_account.tournaments.includes(:game_type, :entries).order(created_at: :desc)
     tournaments = tournaments.where(status: params[:status]) if params[:status].present?
+    # Archived ones only on request (?archived=1)
+    tournaments = ActiveModel::Type::Boolean.new.cast(params[:archived]) ? tournaments.where.not(archived_at: nil) : tournaments.where(archived_at: nil)
     render json: tournaments.map { |t| TournamentSerializer.call(t) }
   end
 
@@ -48,6 +50,16 @@ class Api::TournamentsController < ApplicationController
   def end_early
     @tournament.end_early!
     render json: TournamentSerializer.call(@tournament.reload, details: true)
+  end
+
+  def archive
+    @tournament.archive!
+    render json: TournamentSerializer.call(@tournament, details: true)
+  end
+
+  def unarchive
+    @tournament.unarchive!
+    render json: TournamentSerializer.call(@tournament, details: true)
   end
 
   private

@@ -4,6 +4,8 @@
   Layout comes from the account settings, or ?layout=split|grid|sidebar|ticker  &frame=0 (no frame)
   "split" gives each table its own camera window, divided by black bars, with the table
   overlay's scoreboard in each; ?cols=2 forces the number of columns.
+  When every match on air has the same public page (e.g. one tournament) a QR code to it is
+  shown in a corner; ?qr=0 or the setting turns it off.
 -->
 <script lang="ts">
 	import '#lib/overlay/overlay.css';
@@ -13,6 +15,8 @@
 	import { subscribe } from '#lib/cable.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import Frame from '#lib/overlay/Frame.svelte';
+	import QrBadge from '#lib/overlay/QrBadge.svelte';
+	import { publicUrl } from '#lib/public/links.ts';
 	import Scoreboard from '#lib/overlay/Scoreboard.svelte';
 	import { raceLabel, tableView, teamTargetLabel, useClock, winnerName } from '#lib/overlay/state.svelte.ts';
 	import type { Branding, OverlayConfig, PoolTable } from '#lib/types.ts';
@@ -85,6 +89,13 @@
 			.filter(Boolean)
 			.join(' · ')
 	);
+
+	// One QR code for the page every match on air shares (several tournaments: none)
+	const qr = $derived.by(() => {
+		if (config?.show_qr === false || page.url.searchParams.get('qr') === '0') return null;
+		const urls = new Set(shown.filter((x) => x.view !== 'waiting' && x.table.current_match).map((x) => publicUrl(x.table.current_match!)));
+		return urls.size === 1 ? [...urls][0] : null;
+	});
 
 	async function load() {
 		try {
@@ -196,6 +207,12 @@
 	{/if}
 {/snippet}
 
+{#snippet qrCorner()}
+	{#if qr}
+		<div class="qr-corner" class:left={layout === 'sidebar'}>{#key qr}<QrBadge url={qr} />{/key}</div>
+	{/if}
+{/snippet}
+
 {#snippet teamFooter()}
 	{#each [...sharedTeamMatches] as [id, tm] (id)}
 		<span class="tbar">
@@ -211,10 +228,10 @@
 {#if framed}
 	<Frame {meta} footer={teamBand ? teamFooter : undefined} clip={layout === 'ticker'}
 		{branding} showPoolTv={config?.show_pool_tv_logo !== false} sponsorSeconds={config?.sponsor_seconds}>
-		<div class="area framed">{@render content()}</div>
+		<div class="area framed">{@render content()}{@render qrCorner()}</div>
 	</Frame>
 {:else}
-	<div class="area">{@render content()}</div>
+	<div class="area">{@render content()}{@render qrCorner()}</div>
 {/if}
 
 <style>
@@ -231,6 +248,16 @@
 	.area.framed {
 		--pad: 24px;
 		position: absolute;
+	}
+	.qr-corner {
+		position: absolute;
+		top: var(--pad);
+		right: var(--pad);
+		z-index: 2;
+	}
+	.qr-corner.left {
+		right: auto;
+		left: var(--pad);
 	}
 	/* Team score in the frame's bottom band (split layout) */
 	.tbar {

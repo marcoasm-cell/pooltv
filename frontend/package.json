@@ -29,6 +29,7 @@
 	},
 	"dependencies": {
 		"@rails/actioncable": "^8.1.401",
-		"jspdf": "^4.2.1"
+		"jspdf": "^4.2.1",
+		"qrcode-generator": "^2.0.4"
 	}
 }

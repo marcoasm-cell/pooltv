@@ -3,7 +3,7 @@ module TournamentSerializer
 
   def call(t, details: false)
     data = t.slice(:id, :name, :kind, :format, :target, :status, :starts_on, :grand_final_reset,
-                   :team_match_format, :team_win_condition, :team_target, :ended_early, :pool_table_ids)
+                   :team_match_format, :team_win_condition, :team_target, :ended_early, :pool_table_ids, :public_token, :archived_at)
     data[:game_type] = GameTypeSerializer.call(t.game_type)
     data[:entries_count] = t.entries.size
     return data unless details

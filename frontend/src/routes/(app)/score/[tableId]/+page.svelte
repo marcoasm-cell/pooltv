@@ -12,7 +12,8 @@
 	import { session } from '#lib/session.svelte.ts';
 	import { raceLabel } from '#lib/overlay/state.svelte.ts';
 	import type { Fixture, Match, PoolTable, Side } from '#lib/types.ts';
-	import { downloadSheet } from '#lib/sheet/index.ts';
+	import QrCode from '#lib/components/QrCode.svelte';
+	import { publicUrl } from '#lib/public/links.ts';
 
 	const tableId = $derived(Number(page.params.tableId));
 	let table = $state<PoolTable | null>(null);
@@ -34,6 +35,12 @@
 	const playing = $derived(m?.status === 'live');
 	const disabled = $derived(busy || !live.connected);
 	const pointsMode = $derived(m?.game_type.scoring_mode === 'points');
+
+	// QR code to the public page of what is played here (its tournament's, if it has one),
+	// shown big so people around the table can scan the tablet
+	const qrMatch = $derived(m ?? nextMatch);
+	const qrUrl = $derived(qrMatch ? publicUrl(qrMatch) : null);
+	let showQr = $state(false);
 
 	async function load() {
 		table = await api<PoolTable>(`/pool_tables/${tableId}`);
@@ -150,27 +157,6 @@
 	const undo = () => act(`/matches/${m!.id}/undo`);
 	const concede = (winner: Side) => confirm(t('score.confirmConcede', { name: m![winner].name })) && act(`/matches/${m!.id}/finish`, { winner_side: winner });
 	const start = (next: Match) => (enterFullscreen(), act(`/matches/${next.id}/start`, { pool_table_id: tableId, breaking_side: breaker }));
-	const clear = () => act(`/pool_tables/${tableId}/clear`);
-
-	// Game sheet (PDF): of the whole team match for a rubber, else of the match
-	let sheetBusy = $state(false);
-	async function sheet(match: Match) {
-		sheetBusy = true;
-		error = '';
-		try {
-			if (match.team_match && match.fixture_id) {
-				const f = await api<Fixture>(`/fixtures/${match.fixture_id}`);
-				await downloadSheet({ team: true, fixture: f, tournamentName: match.name ?? match.tournament?.name, winCondition: match.team_match.win_condition });
-			} else {
-				await downloadSheet({ match });
-			}
-		} catch (e) {
-			error = errorMessage(e);
-		} finally {
-			sheetBusy = false;
-		}
-	}
-
 	const SIDES = ['home', 'away'] as const;
 	const SIDE_COLOR: Record<Side, string> = { home: '#1e5aa8', away: '#b0302a' };
 	const colorOf = (_match: Match, side: Side) => SIDE_COLOR[side];
@@ -220,13 +206,6 @@
 	{/if}
 {/snippet}
 
-{#snippet sectionHead(title: string)}
-	<div class="mb-3 flex items-center gap-3">
-		<h2 class="font-condensed! text-[15px] font-bold! tracking-[0.16em]! text-white/80 uppercase">{title}</h2>
-		<span class="h-px flex-1 bg-white/10"></span>
-	</div>
-{/snippet}
-
 <div class="surface-dark safe flex min-h-dvh flex-col text-white select-none">
 <div class="mx-auto flex w-full max-w-screen-2xl flex-1 flex-col">
 	<!-- Header, like the other pages -->
@@ -249,6 +228,15 @@
 						<span class="badge text-white/70 ring-1 ring-white/15">{chip}</span>
 					{/each}
 				</span>
+			{/if}
+			{#if qrUrl}
+				<button class="grid h-10 w-10 shrink-0 place-items-center rounded-full text-white/70 ring-1 ring-white/15 transition hover:text-gold-300 hover:ring-gold-300/40"
+					onclick={() => (showQr = true)} aria-label={t('public.showQr')} title={t('public.showQr')}>
+					<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="4" y="14" width="6" height="6" rx="1" />
+						<path d="M14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2" />
+					</svg>
+				</button>
 			{/if}
 			{#if canFullscreen}
 				<button class="grid h-10 w-10 shrink-0 place-items-center rounded-full text-white/70 ring-1 ring-white/15 transition hover:text-gold-300 hover:ring-gold-300/40"
@@ -366,11 +354,10 @@
 		{/if}
 	{:else}
 		{@const next = nextMatch}
-		{@const later = table?.queue?.slice(1) ?? []}
 		{#if next}
 			{@const tm = next.team_match}
 			<!-- Next game: the main thing between games -->
-			<section class="card-dark hero mb-6 p-5 sm:p-8">
+			<section class="card-dark hero flex flex-1 flex-col p-5 sm:p-8 {showSubs ? 'mb-6' : ''}">
 				<div class="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
 					<div>
 						<p class="font-condensed text-sm font-bold tracking-[0.18em] text-gold-300 uppercase">{t('score.nextGame')}</p>
@@ -388,7 +375,7 @@
 					{/if}
 				</div>
 
-				<div class="grid grid-cols-[1fr_auto_1fr] items-center gap-4 sm:gap-8">
+				<div class="grid flex-1 grid-cols-[1fr_auto_1fr] items-center gap-4 py-4 sm:gap-8">
 					{#each SIDES as side, j (side)}
 						{#if j === 1}<span class="font-condensed text-lg font-extrabold text-white/40 uppercase">{t('common.vs')}</span>{/if}
 						<div class="flex min-w-0 flex-col items-center gap-3 text-center">
@@ -400,7 +387,7 @@
 					{/each}
 				</div>
 
-				<div class="mt-8 flex flex-col items-center gap-4 border-t border-white/10 pt-6">
+				<div class="mt-4 flex flex-col items-center gap-4 border-t border-white/10 pt-6">
 					<div class="flex flex-wrap items-center justify-center gap-3">
 						<span class="font-condensed text-sm font-bold tracking-[0.16em] text-white/60 uppercase">{t('score.whoBreaks')}</span>
 						<div class="flex rounded-full bg-white/5 p-1 ring-1 ring-white/10">
@@ -421,7 +408,7 @@
 				</div>
 			</section>
 		{:else}
-			<div class="mb-6 flex flex-col items-center gap-4 rounded-2xl border-2 border-dashed border-white/10 p-10 text-center text-white/70">
+			<div class="flex flex-1 flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-white/10 p-10 text-center text-white/70">
 				<p>{t('score.noQueue')}</p>
 				<a class="btn btn-gold" href="/matches/new">{t('score.newMatch')}</a>
 			</div>
@@ -475,62 +462,26 @@
 				</div>
 			</div>
 		{/if}
-
-		<div class="grid gap-6 {m?.status === 'finished' && later.length ? 'lg:grid-cols-2' : ''}">
-			{#if m?.status === 'finished'}
-				{@const w = m.winner_side}
-				<section>
-					{@render sectionHead(t('score.lastGame'))}
-					<div class="card-dark p-5">
-						<div class="mb-3 text-xs text-white/60">{metaOf(m)}</div>
-						<div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-							{#each SIDES as side, i (side)}
-								{#if i === 1}
-									<span class="rounded-xl bg-white/10 px-3 py-1 font-display text-2xl font-extrabold tabular-nums ring-1 ring-white/10">{m.home.score} – {m.away.score}</span>
-								{/if}
-								<div class="flex min-w-0 flex-col {side === 'home' ? 'items-end text-right' : 'items-start text-left'} {w && w !== side ? 'opacity-50' : ''}">
-									{@render players(m, side, 'sm')}
-									{#if w === side}<span class="mt-1 flex items-center gap-1 text-xs font-bold text-gold-300">{@render trophy('h-3.5 w-3.5')}{t('score.winner')}</span>{/if}
-								</div>
-							{/each}
-						</div>
-						<div class="mt-4 flex flex-wrap justify-center gap-2 border-t border-white/10 pt-4">
-							<button class="btn btn-ghost-dark btn-sm" disabled={sheetBusy} onclick={() => sheet(m)}>
-								<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14" /></svg>
-								{sheetBusy ? t('score.sheetBusy') : t('score.sheet')}
-							</button>
-							<button class="btn btn-ghost-dark btn-sm" {disabled} onclick={undo}>{t('score.undoLast')}</button>
-							{#if session.canManage}<button class="btn btn-ghost-dark btn-sm" {disabled} onclick={clear}>{t('score.clear')}</button>{/if}
-						</div>
-					</div>
-				</section>
-			{/if}
-
-			{#if later.length}
-				<section>
-					{@render sectionHead(t('score.later'))}
-					<ol class="card-dark divide-y divide-white/10">
-						{#each later as q (q.id)}
-							<li class="flex items-center gap-3 px-4 py-3 text-sm">
-								<span class="w-16 shrink-0 text-xs text-white/50">{q.team_match && q.rubber_number ? t('score.game', { n: q.rubber_number }) : ''}</span>
-								<span class="flex min-w-0 flex-1 items-center justify-end gap-2 text-right">
-									<span class="truncate font-semibold">{q.home.name}</span>
-									<span class="h-2 w-2 shrink-0 rounded-full" style:background={colorOf(q, 'home')}></span>
-								</span>
-								<span class="text-xs font-bold text-white/40 uppercase">{t('common.vs')}</span>
-								<span class="flex min-w-0 flex-1 items-center gap-2">
-									<span class="h-2 w-2 shrink-0 rounded-full" style:background={colorOf(q, 'away')}></span>
-									<span class="truncate font-semibold">{q.away.name}</span>
-								</span>
-							</li>
-						{/each}
-					</ol>
-				</section>
-			{/if}
-		</div>
 	{/if}
 </div>
 </div>
+
+{#if showQr && qrUrl && qrMatch}
+	<!-- Tap anywhere to close -->
+	<div class="fixed inset-0 z-50 grid place-items-center bg-black/85 p-6 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={t('public.scan')}
+		tabindex="-1" onclick={() => (showQr = false)} onkeydown={(e) => e.key === 'Escape' && (showQr = false)}>
+		<div class="flex w-full max-w-md flex-col items-center gap-4 text-center text-white">
+			<p class="font-condensed text-sm font-bold tracking-[0.18em] text-gold-300 uppercase">{t('public.scan')}</p>
+			<p class="max-w-full truncate font-display text-2xl font-extrabold">
+				{qrMatch.tournament?.public_token ? qrMatch.tournament.name : `${qrMatch.home.name} ${t('common.vs')} ${qrMatch.away.name}`}
+			</p>
+			<QrCode value={qrUrl} class="w-[min(70vmin,22rem)] rounded-2xl" label={t('public.scan')} />
+			<p class="max-w-full truncate text-sm text-white/60">{qrUrl.replace(/^https?:\/\//, '')}</p>
+			<button class="btn btn-ghost-dark mt-2" onclick={() => (showQr = false)}>{t('public.close')}</button>
+		</div>
+	</div>
+{/if}
+<svelte:window onkeydown={(e) => showQr && e.key === 'Escape' && (showQr = false)} />
 
 <style lang="postcss">
 	@reference "../../../../app.css";

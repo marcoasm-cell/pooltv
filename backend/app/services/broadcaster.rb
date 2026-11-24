@@ -1,6 +1,7 @@
 # Pushes live state to the overlays and apps over Action Cable.
 #   table:<id>   - the OBS overlay of one table
 #   account:<id> - the all-tables overlay, the admin and the scoring app
+#   public:match:<id>, public:tournament:<id> - the public pages (QR code)
 # Payloads are full snapshots, so a client only has to replace what it has.
 #
 # Inside Broadcaster.batch { ... } nothing is sent until the block ends; then
@@ -89,11 +90,16 @@ module Broadcaster
 
   def send_match(match)
     Match.preload_for_serializer([ match ])
-    ActionCable.server.broadcast("account:#{match.account_id}", { type: "match", match: MatchSerializer.call(match) })
+    payload = { type: "match", match: MatchSerializer.call(match) }
+    ActionCable.server.broadcast("account:#{match.account_id}", payload)
+    # Public pages: the match's own and its tournament's
+    ActionCable.server.broadcast(match.public_stream, payload)
+    ActionCable.server.broadcast(match.tournament.public_stream, payload) if match.tournament
   end
 
   def send_fixture(fixture)
-    account_id = fixture.tournament.account_id
-    ActionCable.server.broadcast("account:#{account_id}", { type: "fixture", fixture: FixtureSerializer.call(fixture) })
+    payload = { type: "fixture", fixture: FixtureSerializer.call(fixture) }
+    ActionCable.server.broadcast("account:#{fixture.tournament.account_id}", payload)
+    ActionCable.server.broadcast(fixture.tournament.public_stream, payload)
   end
 end

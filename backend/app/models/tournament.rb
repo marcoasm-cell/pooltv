@@ -10,7 +10,12 @@ class Tournament < ApplicationRecord
   has_many :entries, dependent: :destroy
   has_many :fixtures, -> { order(:bracket, :round, :position) }, dependent: :destroy
 
+  # Key of the public page with the bracket or the standings (/t/<token>)
+  has_secure_token :public_token
+
   before_validation :default_target
+  # Start, reset, end: the public page loads the tournament again
+  after_commit :broadcast_public, on: :update
 
   validates :name, presence: true
   validates :kind, inclusion: { in: KINDS }
@@ -118,11 +123,27 @@ class Tournament < ApplicationRecord
          .order(:fixture_id, :rubber_number, :id).each { |m| auto_assign!(m) }
   end
 
+  # Archiving only hides the tournament from the list: a running one has to
+  # end first, so no game is left in a table's queue.
+  def archive!
+    raise Errors::InvalidState, I18n.t("app_errors.archive_running") if status == "running"
+
+    update!(archived_at: Time.current) unless archived_at
+  end
+
+  def unarchive!
+    update!(archived_at: nil)
+  end
+
   def check_finished!
     return unless status == "running"
     return if fixtures.where.not(status: %w[finished void]).exists?
 
     update!(status: "finished")
+  end
+
+  def public_stream
+    "public:tournament:#{id}"
   end
 
   def winner_entry
@@ -165,5 +186,9 @@ class Tournament < ApplicationRecord
     elsif (team_match_format - RUBBER_KINDS).any?
       errors.add(:team_match_format, :bad_rubbers)
     end
+  end
+
+  def broadcast_public
+    ActionCable.server.broadcast(public_stream, { type: "tournament", id: })
   end
 end

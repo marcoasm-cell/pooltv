@@ -127,4 +127,32 @@ class ApiFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal [], json["pool_table_ids"]
   end
+
+  test "a tournament can be archived and brought back, but not while running" do
+    gt = GameType.find_by(key: "pt_pool")
+    tour = post("/api/tournaments", params: { name: "Open", game_type_id: gt.id, format: "round_robin" }, headers: @auth, as: :json) && json
+    2.times do |i|
+      player = post("/api/players", params: { name: "P#{i}" }, headers: @auth) && json
+      post "/api/tournaments/#{tour["id"]}/entries", params: { player_id: player["id"] }, headers: @auth
+    end
+    post "/api/tournaments/#{tour["id"]}/start", headers: @auth
+
+    post "/api/tournaments/#{tour["id"]}/archive", headers: @auth
+    assert_response :unprocessable_entity
+
+    post "/api/tournaments/#{tour["id"]}/end_early", headers: @auth
+    post "/api/tournaments/#{tour["id"]}/archive", headers: @auth
+    assert_response :success
+    assert json["archived_at"]
+
+    get "/api/tournaments", headers: @auth
+    assert_empty json
+    get "/api/tournaments", params: { archived: 1 }, headers: @auth
+    assert_equal [ tour["id"] ], json.map { |x| x["id"] }
+
+    post "/api/tournaments/#{tour["id"]}/unarchive", headers: @auth
+    assert_nil json["archived_at"]
+    get "/api/tournaments", headers: @auth
+    assert_equal [ tour["id"] ], json.map { |x| x["id"] }
+  end
 end

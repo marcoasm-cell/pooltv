@@ -3,6 +3,7 @@
   It draws a frame (Pool TV header + a rounded window); put the camera behind it so the game shows
   through the window.
   Query options: ?position=top|bottom  &scale=1.2  &frame=0 (scoreboard only, no frame)
+  &qr=0 (no QR code to the public page; also a setting)
 -->
 <script lang="ts">
 	import '#lib/overlay/overlay.css';
@@ -11,6 +12,8 @@
 	import { t } from '#lib/i18n/index.svelte.ts';
 	import { subscribe } from '#lib/cable.ts';
 	import Frame from '#lib/overlay/Frame.svelte';
+	import QrBadge from '#lib/overlay/QrBadge.svelte';
+	import { publicUrl } from '#lib/public/links.ts';
 	import Scoreboard from '#lib/overlay/Scoreboard.svelte';
 	import { matchCaption, tableView, useClock } from '#lib/overlay/state.svelte.ts';
 	import type { Branding, PoolTable } from '#lib/types.ts';
@@ -30,6 +33,10 @@
 
 	const match = $derived(view === 'live' || view === 'winner' ? table?.current_match : null);
 	const meta = $derived(match ? matchCaption(match) : '');
+	// QR code to the match's public page (or its tournament's), in the corner away from the scoreboard
+	const qr = $derived(
+		match && table?.overlay.show_qr !== false && page.url.searchParams.get('qr') !== '0' ? publicUrl(match) : null
+	);
 
 	async function load() {
 		try {
@@ -56,6 +63,14 @@
 
 <svelte:head><title>{t('overlay.title', { name: table?.name ?? t('overlay.table') })}</title></svelte:head>
 
+{#snippet qrCorner()}
+	{#if qr}
+		<div class="qr-corner {position === 'top' ? 'bottom' : 'top'}" style:--scale={scale}>
+			{#key qr}<QrBadge url={qr} />{/key}
+		</div>
+	{/if}
+{/snippet}
+
 {#snippet content()}
 	{#if error}
 		<!-- Only visible in the OBS preview while the link is wrong -->
@@ -80,11 +95,13 @@
 		<div class="stage in-frame {position}" style:--scale={scale}>
 			{@render content()}
 		</div>
+		<div class="corner-box in-frame">{@render qrCorner()}</div>
 	</Frame>
 {:else}
 	<div class="stage {position}" style:--scale={scale}>
 		{@render content()}
 	</div>
+	<div class="corner-box">{@render qrCorner()}</div>
 {/if}
 
 <style>
@@ -113,6 +130,37 @@
 	}
 	.stage.top > :global(*) {
 		transform-origin: center top;
+	}
+	/* ---- QR code, in the top or bottom right corner ---- */
+	.corner-box {
+		position: fixed;
+		inset: 0;
+		pointer-events: none;
+	}
+	.corner-box.in-frame {
+		position: absolute;
+	}
+	.qr-corner {
+		position: absolute;
+		right: 40px;
+		transform: scale(var(--scale));
+	}
+	.in-frame .qr-corner {
+		right: 28px;
+	}
+	.qr-corner.top {
+		top: 40px;
+		transform-origin: right top;
+	}
+	.in-frame .qr-corner.top {
+		top: 28px;
+	}
+	.qr-corner.bottom {
+		bottom: 40px;
+		transform-origin: right bottom;
+	}
+	.in-frame .qr-corner.bottom {
+		bottom: 28px;
 	}
 	.waiting,
 	.error {
@@ -146,6 +194,18 @@
 	@media (max-width: 1200px) {
 		.stage {
 			padding: 24px;
+		}
+		.qr-corner,
+		.in-frame .qr-corner {
+			right: 16px;
+		}
+		.qr-corner.top,
+		.in-frame .qr-corner.top {
+			top: 16px;
+		}
+		.qr-corner.bottom,
+		.in-frame .qr-corner.bottom {
+			bottom: 16px;
 		}
 		.stage.in-frame {
 			padding: 16px;

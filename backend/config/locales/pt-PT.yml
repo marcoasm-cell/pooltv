@@ -28,6 +28,7 @@
     reset_before_delete: "Reponha o torneio antes de o apagar"
     tournament_match_live: "Está a ser jogada uma partida deste torneio"
     tournament_not_running: "O torneio não está a decorrer"
+    archive_running: "Termina o torneio antes de o arquivar"
     tournament_ended: "O torneio foi terminado antes do fim"
     entries_before_start: "As inscrições só podem ser alteradas antes do início"
     seeds_before_start: "Os cabeças de série só podem ser alterados antes do início"

@@ -28,6 +28,7 @@ en:
     reset_before_delete: "Reset the tournament before deleting it"
     tournament_match_live: "A match of this tournament is being played"
     tournament_not_running: "The tournament is not running"
+    archive_running: "End the tournament before archiving it"
     tournament_ended: "The tournament was ended early"
     entries_before_start: "Entries can only change before the start"
     seeds_before_start: "Seeds can only change before the start"

@@ -13,7 +13,7 @@ export type LiveStatus = 'connecting' | 'connected' | 'disconnected';
  * and never miss changes made while disconnected.
  */
 export function subscribe(
-	channel: 'OverlayChannel' | 'AccountChannel',
+	channel: 'OverlayChannel' | 'AccountChannel' | 'PublicChannel',
 	params: Record<string, string>,
 	handlers: {
 		onMessage: (data: any) => void;

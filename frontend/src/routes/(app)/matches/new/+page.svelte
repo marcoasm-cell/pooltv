@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { api } from '#lib/api.ts';
 	import { errorMessage } from '#lib/format.ts';
 	import { t } from '#lib/i18n/index.svelte.ts';
@@ -38,6 +39,23 @@
 	let newTeam = $state<Record<Side, string | null>>({ home: null, away: null });
 	// Team mode: tables in the order games are dealt to them
 	let teamTables = $state<number[]>([]);
+	// Team mode: lineups are set in turn so neither team sees the other's.
+	// Home goes first; once confirmed its lineup is hidden and away takes its
+	// turn. Both are shown only after both are confirmed and someone reveals them.
+	let turn = $state<Side | null>('home');
+	let confirmed = $state<Record<Side, boolean>>({ home: false, away: false });
+	let revealed = $state(false);
+
+	function confirmLineup(side: Side) {
+		confirmed[side] = true;
+		const other: Side = side === 'home' ? 'away' : 'home';
+		turn = confirmed[other] ? null : other;
+	}
+
+	function editLineup(side: Side) {
+		confirmed[side] = false;
+		turn = side;
+	}
 
 	function toggleTable(id: number) {
 		const i = teamTables.indexOf(id);
@@ -54,6 +72,7 @@
 	// Team match: first team to this many games wins
 	let raceTo = $state(9);
 	const teamsReady = $derived(picked.home.length >= TEAM_SIZE && picked.away.length >= TEAM_SIZE);
+	const lineupsSet = $derived(teamsReady && confirmed.home && confirmed.away);
 	// 1v1, 2v2, 3v3, 4v4, then 1v2, 2v3, 3v4, 4v1, and so on
 	const pairings = Array.from({ length: TEAM_SIZE }, (_, shift) =>
 		Array.from({ length: TEAM_SIZE }, (_, i) => [i, (i + shift) % TEAM_SIZE])
@@ -68,7 +87,9 @@
 		loadTeams();
 		api<PoolTable[]>('/pool_tables').then((x) => {
 			tables = x.filter((tb) => tb.active);
-			form.pool_table_id = tables.find((x) => !x.current_match || x.current_match.status !== 'live')?.id ?? tables[0]?.id ?? 0;
+			// ?table=<id> comes from a free table's card on the dashboard
+			const wanted = Number(page.url.searchParams.get('table'));
+			form.pool_table_id = tables.find((x) => x.id === wanted)?.id ?? tables.find((x) => !x.current_match || x.current_match.status !== 'live')?.id ?? tables[0]?.id ?? 0;
 			if (form.pool_table_id) teamTables = [form.pool_table_id];
 		});
 	});
@@ -170,7 +191,7 @@
 	);
 	const canCreate = $derived(
 		form.kind === 'team'
-			? teamsReady && teamTables.length > 0
+			? lineupsSet && teamTables.length > 0
 			: SIDES.every((side) => lineup[side].slice(0, perSide).every(Boolean)) && !!form.pool_table_id
 	);
 
@@ -219,6 +240,28 @@
 			<path d="M12 13v3.5M8.5 20h7M9.5 20l.8-3.5h3.4l.8 3.5" />
 		{/if}
 	</svg>
+{/snippet}
+
+{#snippet teamPicker(side: Side)}
+	{#if newTeam[side] != null}
+		<div class="flex gap-2">
+			<input class="field mt-0! flex-1" placeholder={t('newMatch.newTeamPh')} bind:value={newTeam[side]}
+				onkeydown={(e) => e.key === 'Enter' && (e.preventDefault(), createTeam(side))} />
+			<button type="button" class="btn btn-primary btn-sm" onclick={() => createTeam(side)}>{t('common.create')}</button>
+			<button type="button" class="btn btn-ghost btn-sm px-3" onclick={() => (newTeam[side] = null)} aria-label={t('common.cancel')}>✕</button>
+		</div>
+	{:else}
+		<select class="field mt-0! font-semibold" value={teamId[side]}
+			onchange={(e) => {
+				const v = e.currentTarget.value;
+				if (v === 'new') { newTeam[side] = ''; e.currentTarget.value = String(teamId[side]); }
+				else pickTeam(side, Number(v));
+			}}>
+			<option value={0} disabled>{t('newMatch.pickTeam')}</option>
+			{#each teams as x (x.id)}<option value={x.id} disabled={x.id === teamId[side === 'home' ? 'away' : 'home']}>{x.name}</option>{/each}
+			<option value="new">{t('newMatch.newTeamOpt')}</option>
+		</select>
+	{/if}
 {/snippet}
 
 {#snippet stepper(value: number, set: (v: number) => void, max: number = Infinity)}
@@ -371,26 +414,35 @@
 									{/if}
 								{/each}
 							</div>
-						{:else}
-							{#if newTeam[side] != null}
-								<div class="flex gap-2">
-									<input class="field mt-0! flex-1" placeholder={t('newMatch.newTeamPh')} bind:value={newTeam[side]}
-										onkeydown={(e) => e.key === 'Enter' && (e.preventDefault(), createTeam(side))} />
-									<button type="button" class="btn btn-primary btn-sm" onclick={() => createTeam(side)}>{t('common.create')}</button>
-									<button type="button" class="btn btn-ghost btn-sm px-3" onclick={() => (newTeam[side] = null)} aria-label={t('common.cancel')}>✕</button>
-								</div>
+						{:else if turn !== side && confirmed[side]}
+							{#if revealed}
+								<ol class="space-y-1.5">
+									{#each picked[side] as pid, i (pid)}
+										{@const reserve = i >= TEAM_SIZE}
+										<li class="flex items-center gap-3 rounded-xl px-2 py-1.5 {reserve ? 'bg-gold-100/50' : 'bg-gray-50'}">
+											<span class="w-7 text-center font-condensed text-base font-bold {reserve ? 'text-gold-600' : 'text-gray-400'}">
+												{reserve ? t('newMatch.reserveTag', { n: i - TEAM_SIZE + 1 }) : `${i + 1}º`}
+											</span>
+											<span class="avatar" style:background={reserve ? '#cc8a10' : c}>{initials(nameOf(pid))}</span>
+											<span class="flex-1 truncate font-medium">{nameOf(pid)}</span>
+										</li>
+									{/each}
+								</ol>
 							{:else}
-								<select class="field mt-0! font-semibold" value={teamId[side]}
-									onchange={(e) => {
-										const v = e.currentTarget.value;
-										if (v === 'new') { newTeam[side] = ''; e.currentTarget.value = String(teamId[side]); }
-										else pickTeam(side, Number(v));
-									}}>
-									<option value={0} disabled>{t('newMatch.pickTeam')}</option>
-									{#each teams as x (x.id)}<option value={x.id} disabled={x.id === teamId[side === 'home' ? 'away' : 'home']}>{x.name}</option>{/each}
-									<option value="new">{t('newMatch.newTeamOpt')}</option>
-								</select>
+								<div class="flex items-center gap-3 rounded-xl bg-gray-50 px-4 py-5">
+									<svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+										<rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" />
+									</svg>
+									<span class="flex-1 text-sm font-medium text-gray-600">{t('newMatch.lineupHidden')}</span>
+									<button type="button" class="btn btn-ghost btn-sm" onclick={() => editLineup(side)}>{t('newMatch.editLineup')}</button>
+								</div>
 							{/if}
+						{:else if turn !== side}
+							{@render teamPicker(side)}
+							<p class="mt-4 rounded-xl border-2 border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-500">{t('newMatch.waitHome')}</p>
+						{:else}
+							<p class="mb-3 text-sm text-gray-500">{t('newMatch.yourTurn')}</p>
+							{@render teamPicker(side)}
 
 							{#if teamId[side]}
 								<ol class="mt-4 space-y-1.5">
@@ -450,6 +502,11 @@
 									</button>
 								{/if}
 							{/if}
+
+							<button type="button" class="btn btn-primary mt-5 w-full" disabled={!teamId[side] || picked[side].length < TEAM_SIZE}
+								onclick={() => confirmLineup(side)}>
+								{t('newMatch.confirmLineup')}
+							</button>
 						{/if}
 					</div>
 				</div>
@@ -458,7 +515,15 @@
 	</section>
 
 	<!-- 4. Game order -->
-	{#if form.kind === 'team' && teamsReady}
+	{#if form.kind === 'team' && lineupsSet && !revealed}
+		<section class="mb-8">
+			{@render stepHead(4, t('newMatch.gameOrder'))}
+			<div class="card flex flex-wrap items-center gap-4 p-6">
+				<p class="flex-1 text-sm text-gray-500">{t('newMatch.lineupsHiddenHint')}</p>
+				<button type="button" class="btn btn-ghost" onclick={() => (revealed = true)}>{t('newMatch.revealLineups')}</button>
+			</div>
+		</section>
+	{:else if form.kind === 'team' && lineupsSet}
 		<section class="mb-8">
 			{@render stepHead(4, t('newMatch.gameOrder'))}
 			<div class="card p-6">

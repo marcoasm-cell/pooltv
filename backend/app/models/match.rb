@@ -14,6 +14,9 @@ class Match < ApplicationRecord
   has_many :players, through: :match_players
   has_many :match_events, -> { order(:id) }, dependent: :destroy
 
+  # Key of the public page where anyone follows the match (/m/<token>)
+  has_secure_token :public_token
+
   # Everything MatchSerializer reads, so serializing many matches costs a
   # handful of queries instead of a few per match
   # (SIDES_PRELOAD is enough with fixture: false)
@@ -46,6 +49,10 @@ class Match < ApplicationRecord
 
   def tournament
     fixture&.tournament
+  end
+
+  def public_stream
+    "public:match:#{id}"
   end
 
   def scheduled? = status == "scheduled"

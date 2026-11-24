@@ -13,6 +13,7 @@
 	let gameTypes = $state<GameType[]>([]);
 	let tables = $state<PoolTable[]>([]);
 	let creating = $state(false);
+	let archived = $state(false);
 	let saving = $state(false);
 	let error = $state('');
 	let form = $state({
@@ -36,7 +37,6 @@
 	const gameType = $derived(gameTypes.find((g) => g.id === form.game_type_id));
 
 	$effect(() => {
-		api<Tournament[]>('/tournaments').then((tour) => (tournaments = tour));
 		api<GameType[]>('/game_types').then((g) => {
 			gameTypes = g;
 			const def = g.find((x) => x.key === 'pt_pool') ?? g[0];
@@ -46,6 +46,12 @@
 			tables = x.filter((tb) => tb.active);
 			form.pool_table_ids = tables.map((tb) => tb.id);
 		});
+	});
+
+	// Active or archived ones
+	$effect(() => {
+		const want = archived;
+		api<Tournament[]>(want ? '/tournaments?archived=1' : '/tournaments').then((tour) => archived === want && (tournaments = tour));
 	});
 
 	function pickGame(id: number) {
@@ -265,6 +271,15 @@
 	</form>
 {/if}
 
+<div class="mb-3 flex justify-end">
+	<div class="flex rounded-full bg-gray-100 p-1 text-sm ring-1 ring-gray-200">
+		{#each [false, true] as a (a)}
+			<button class="rounded-full px-4 py-1.5 font-semibold transition {archived === a ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}"
+				aria-pressed={archived === a} onclick={() => (archived = a)}>{a ? t('tournaments.archived') : t('tournaments.active')}</button>
+		{/each}
+	</div>
+</div>
+
 <div class="card divide-y divide-gray-100 overflow-hidden">
 	{#each tournaments as tour (tour.id)}
 		<a href="/tournaments/{tour.id}" class="group flex items-center gap-4 px-5 py-4 transition hover:bg-gray-50">
@@ -279,7 +294,7 @@
 			<span class="text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-gray-500">→</span>
 		</a>
 	{:else}
-		<p class="p-8 text-center text-sm text-gray-500">{t('tournaments.none')}</p>
+		<p class="p-8 text-center text-sm text-gray-500">{archived ? t('tournaments.noneArchived') : t('tournaments.none')}</p>
 	{/each}
 </div>
 

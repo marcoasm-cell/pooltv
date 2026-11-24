@@ -125,6 +125,11 @@
 				</select>
 			</label>
 		</div>
+		<label class="mt-4 flex items-center gap-2 text-sm">
+			<input type="checkbox" checked={o.show_qr !== false}
+				onchange={(e) => saveOverlay({ show_qr: e.currentTarget.checked })} />
+			{t('settings.showQr')}
+		</label>
 	</section>
 
 	<section class="card mb-6 p-6">

@@ -79,6 +79,8 @@ export interface TeamSide {
 
 export interface Match {
 	id: number;
+	/** Key of the public page (/m/<token>) */
+	public_token: string;
 	/** Optional name given when creating a match outside any tournament */
 	name: string | null;
 	status: 'scheduled' | 'live' | 'finished';
@@ -95,7 +97,7 @@ export interface Match {
 	home: MatchSide;
 	away: MatchSide;
 	fixture_id: number | null;
-	tournament: { id: number; name: string; kind: string; format: string } | null;
+	tournament: { id: number; name: string; kind: string; format: string; public_token?: string } | null;
 	round_label: RoundName | null;
 	team_match: {
 		win_condition: 'rubbers' | 'racks';
@@ -112,6 +114,8 @@ export interface OverlayConfig {
 	all_tables_layout: 'split' | 'grid' | 'sidebar' | 'ticker';
 	show_pool_tv_logo: boolean;
 	sponsor_seconds: number;
+	/** QR code to the public page of the match or tournament */
+	show_qr: boolean;
 	visible?: boolean | string;
 }
 
@@ -201,6 +205,10 @@ export interface Tournament {
 	ended_early: boolean;
 	/** Tables the matches are dealt to automatically, in the order picked */
 	pool_table_ids: number[];
+	/** Key of the public page (/t/<token>) */
+	public_token: string;
+	/** Set when archived: out of the list of tournaments */
+	archived_at: string | null;
 	game_type: GameType;
 	entries_count: number;
 	entries?: Entry[];
@@ -235,4 +243,10 @@ export interface Account {
 	logo_url?: string | null;
 	overlay_settings?: OverlayConfig;
 	overlay_token?: string | null;
+}
+
+/** What a public page knows of the club's tables: their names */
+export interface PublicTable {
+	id: number;
+	name: string;
 }

@@ -72,8 +72,12 @@
 		{#each tables.filter((t) => t.active) as table (table.id)}
 			{@const m = table.current_match}
 			{@const disabled = busy === table.id}
+			<!-- A table with nothing playing or queued goes to setting up a match -->
+			{@const scorable = !!(m || table.next_match)}
+			{@const href = scorable ? `/score/${table.id}` : `/matches/new?table=${table.id}`}
+			{@const action = scorable ? t('dashboard.score') : t('nav.newMatch')}
 			<article class="card flex flex-col overflow-hidden transition hover:shadow-md">
-				<a href="/score/{table.id}" class="flex flex-1 flex-col" aria-label="{t('dashboard.score')} · {table.name}">
+				<a {href} class="flex flex-1 flex-col" aria-label="{action} · {table.name}">
 				<div class="m-1.5 mb-0">
 					<div class="surface-dark flex items-center justify-between gap-3 rounded-xl px-4 py-3.5">
 						<h2 class="truncate text-lg text-white">{table.name}</h2>
@@ -128,7 +132,7 @@
 					{:else if m?.status === 'finished' && session.canManage}
 						<button class="btn btn-ghost btn-sm" {disabled} onclick={() => clearTable(table.id)}>{t('score.clear')}</button>
 					{/if}
-					<a href="/score/{table.id}" class="btn btn-dark btn-sm">{t('dashboard.score')}</a>
+					<a {href} class="btn btn-dark btn-sm">{action}</a>
 				</div>
 			</article>
 		{/each}

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_21_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_24_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -152,10 +152,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_21_000000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "name"
+    t.string "public_token", null: false
     t.index ["account_id"], name: "index_matches_on_account_id"
     t.index ["fixture_id"], name: "index_matches_on_fixture_id"
     t.index ["game_type_id"], name: "index_matches_on_game_type_id"
     t.index ["pool_table_id"], name: "index_matches_on_pool_table_id"
+    t.index ["public_token"], name: "index_matches_on_public_token", unique: true
   end
 
   create_table "players", force: :cascade do |t|
@@ -250,8 +252,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_21_000000) do
     t.datetime "updated_at", null: false
     t.boolean "ended_early", default: false, null: false
     t.jsonb "pool_table_ids", default: [], null: false
+    t.string "public_token", null: false
+    t.datetime "archived_at"
     t.index ["account_id"], name: "index_tournaments_on_account_id"
     t.index ["game_type_id"], name: "index_tournaments_on_game_type_id"
+    t.index ["public_token"], name: "index_tournaments_on_public_token", unique: true
   end
 
   create_table "users", force: :cascade do |t|

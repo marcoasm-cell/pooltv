@@ -4,7 +4,7 @@ module MatchSerializer
 
   def call(match, fixture: true)
     data = {
-      id: match.id, name: match.name, status: match.status, kind: match.kind, target: match.target,
+      id: match.id, public_token: match.public_token, name: match.name, status: match.status, kind: match.kind, target: match.target,
       rubber_number: match.rubber_number, breaking_side: match.breaking_side, winner_side: match.winner_side,
       started_at: match.started_at, finished_at: match.finished_at,
       pool_table_id: match.pool_table_id, queue_position: match.queue_position,
@@ -16,7 +16,7 @@ module MatchSerializer
 
     f = match.fixture
     t = f.tournament
-    data[:tournament] = { id: t.id, name: t.name, kind: t.kind, format: t.format }
+    data[:tournament] = { id: t.id, name: t.name, kind: t.kind, format: t.format, public_token: t.public_token }
     data[:round_label] = FixtureSerializer.round_label(f)
     data[:team_match] = team_match(f) if t.team?
     data

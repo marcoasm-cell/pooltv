@@ -65,6 +65,20 @@ The links never change unless you press *New link*, which turns the old one off.
 In Settings you choose what an idle table shows (nothing, or "waiting / up next")
 and how long the winner banner stays up.
 
+## Public pages (QR code)
+
+Every match and tournament has a public page anyone can follow live on their phone, no sign-in:
+
+- `/m/<token>`: one match: players, score, who breaks, race; a rubber also shows the team score.
+- `/t/<token>`: a tournament: the tree (single/double elimination), or the standings and the
+  drawn fixtures round by round (round robin); plus the matches on now and up next.
+
+The overlays show a QR code to the page (the tournament's when the match belongs to one) in the
+corner away from the scoreboard; the all-tables overlay shows one only when every match on air
+shares the same page. Turn it off in Settings, or with `?qr=0` on the link. The scoring screen has
+a QR button that shows it full screen for people around the table. The QR codes use this site's
+address; set `VITE_PUBLIC_URL` for the Android app.
+
 ## Import from the FPB
 
 Admins can copy teams, rosters and athletes from the Federação Portuguesa de Bilhar

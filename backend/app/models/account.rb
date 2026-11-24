@@ -10,7 +10,9 @@ class Account < ApplicationRecord
     # Show the Pool TV badge in the header of the overlays (next to the club's logo)
     "show_pool_tv_logo" => true,
     # Seconds each sponsor stays in the header before the next one
-    "sponsor_seconds" => 8
+    "sponsor_seconds" => 8,
+    # QR code to the public page of the match or tournament on the overlays
+    "show_qr" => true
   }.freeze
 
   include HasLogo

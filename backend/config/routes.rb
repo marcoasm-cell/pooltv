@@ -38,6 +38,8 @@ Rails.application.routes.draw do
         post :start
         post :reset
         post :end_early
+        post :archive
+        post :unarchive
       end
       resources :entries, only: %i[create update destroy]
     end
@@ -72,5 +74,9 @@ Rails.application.routes.draw do
     # Public snapshots for OBS overlays (the token is the only key)
     get "overlay/tables/:token", to: "overlays#table"
     get "overlay/all/:token", to: "overlays#all"
+
+    # Public pages of a match or a tournament, followed live (QR code)
+    get "public/matches/:token", to: "public#match"
+    get "public/tournaments/:token", to: "public#tournament"
   end
 end

@@ -120,6 +120,8 @@
 		const next = ids.includes(tableId) ? ids.filter((x) => x !== tableId) : [...ids, tableId];
 		run(() => api(`/tournaments/${id}`, { method: 'PATCH', body: { pool_table_ids: next } }));
 	};
+	const archive = () => run(() => api(`/tournaments/${id}/archive`, { method: 'POST' }));
+	const unarchive = () => run(() => api(`/tournaments/${id}/unarchive`, { method: 'POST' }));
 	const remove = async () => {
 		if (!confirm(t('tournament.confirmDelete'))) return;
 		await api(`/tournaments/${id}`, { method: 'DELETE' });
@@ -196,8 +198,17 @@
 				{#if tour.status === 'running'}<button class="btn btn-ghost btn-sm" onclick={endEarly}>{t('tournament.end')}</button>{/if}
 				<button class="btn btn-danger btn-sm" onclick={reset}>{t('tournament.reset')}</button>
 			{/if}
+			{#if tour.archived_at}
+				<button class="btn btn-ghost btn-sm" onclick={unarchive}>{t('tournament.unarchive')}</button>
+			{:else if tour.status !== 'running'}
+				<button class="btn btn-ghost btn-sm" onclick={archive}>{t('tournament.archive')}</button>
+			{/if}
 		{/if}
 	</header>
+
+	{#if tour.archived_at}
+		<p class="mb-6 rounded-xl bg-gray-100 px-4 py-2.5 text-sm text-gray-600 ring-1 ring-gray-200">{t('tournament.archivedNote')}</p>
+	{/if}
 	{#if error}<p class="alert-error mb-4">{error}</p>{/if}
 	{#if tour.status !== 'finished' && (session.canManage || tour.pool_table_ids?.length)}
 		{@const active = tables.filter((x) => x.active || tour!.pool_table_ids?.includes(x.id))}
