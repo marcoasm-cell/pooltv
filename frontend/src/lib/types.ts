@@ -123,6 +123,8 @@ export interface Sponsor {
 	id: number;
 	name: string;
 	logo_url: string | null;
+	/** Shown on the sponsor's card on the overlays */
+	email?: string | null;
 	/** Only for admins (the overlays only get the active ones) */
 	active?: boolean;
 	position?: number;

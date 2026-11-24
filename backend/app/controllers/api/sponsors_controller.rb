@@ -12,7 +12,7 @@ class Api::SponsorsController < ApplicationController
     sponsor = nil
     Sponsor.transaction do
       position = current_account.sponsors.maximum(:position).to_i + 1
-      sponsor = current_account.sponsors.create!(params.permit(:name, :active).with_defaults(position:))
+      sponsor = current_account.sponsors.create!(params.permit(:name, :email, :active).with_defaults(position:))
       sponsor.attach_logo!(params[:logo]) if params[:logo].present?
     end
     changed
@@ -20,7 +20,7 @@ class Api::SponsorsController < ApplicationController
   end
 
   def update
-    @sponsor.update!(params.permit(:name, :active))
+    @sponsor.update!(params.permit(:name, :email, :active))
     @sponsor.attach_logo!(params[:logo]) if params[:logo].present?
     changed
     render json: sponsors_json

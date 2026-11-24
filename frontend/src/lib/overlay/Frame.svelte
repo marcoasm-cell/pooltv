@@ -2,8 +2,9 @@
   Broadcast frame of the overlays: a header band and a rounded transparent window where the
   camera shows through. Whatever is passed as children is laid out inside the window
   (a positioned box the size of the window).
-  Header: Pool TV badge (with pooltv.me) and the club's logo on the left; the sponsors in turn,
-  the label and the club's name on the right.
+  Header: Pool TV badge (with pooltv.me) and the club's logo on the left; the sponsors (cards with
+  logo, name and email, as many side by side as fit, in turns when there are more), the label and
+  the club's name on the right.
 -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
@@ -43,15 +44,34 @@
 	} = $props();
 
 	const sponsors = $derived(branding?.sponsors.filter((s) => s.logo_url) ?? []);
+
+	// As many cards as fit in what the header leaves them: its width less the brands, the label
+	// and club name, and some room for the centre text (sizes as in the CSS below)
+	let innerWidth = $state(1920);
+	let headerWidth = $state(0);
+	let brandsWidth = $state(0);
+	let tailWidth = $state(0);
+	const size = $derived(
+		innerWidth <= 1200 ? { card: 190, gap: 8, space: 10, meta: 140 } : { card: 240, gap: 12, space: 18, meta: 320 }
+	);
+	const room = $derived(
+		headerWidth - brandsWidth - tailWidth - (meta ? size.meta : 0) - size.space * (tailWidth ? 4 : 2)
+	);
+	const slots = $derived(Math.max(1, Math.min(sponsors.length, Math.floor((room + size.gap) / (size.card + size.gap)))));
+	const rotating = $derived(sponsors.length > slots);
+
+	// More sponsors than cards: they take turns, a card's worth at a time, wrapping round
 	let turn = $state(0);
-	const sponsor = $derived(sponsors.length ? sponsors[turn % sponsors.length] : null);
+	const shown = $derived(
+		Array.from({ length: sponsors.length ? slots : 0 }, (_, i) => sponsors[(turn * slots + i) % sponsors.length])
+	);
 	$effect(() => {
-		if (sponsors.length < 2) return;
+		if (!rotating) return;
 		const id = setInterval(() => turn++, Math.max(3, Number(sponsorSeconds) || 8) * 1000);
 		return () => clearInterval(id);
 	});
 
-	/* The next sponsor rises into the cell, coming into focus, once the last has left upwards */
+	/* The next sponsors rise into their cells, one after another, coming into focus, once the last has left upwards */
 	const rise = (_: Element, { delay = 0, duration = 900 } = {}) => ({
 		delay,
 		duration,
@@ -67,10 +87,12 @@
 	});
 </script>
 
-<div class="frame" class:has-footer={!!footer} class:has-sponsor={!!sponsor}>
+<svelte:window bind:innerWidth />
+
+<div class="frame" class:has-footer={!!footer} class:has-sponsor={sponsors.length > 0}>
 	<div class="window"></div>
-	<header>
-		<div class="brands">
+	<header bind:clientWidth={headerWidth}>
+		<div class="brands" bind:clientWidth={brandsWidth}>
 			{#if showPoolTv}<Brand /><span class="site">pooltv.me</span>{/if}
 			{#if branding?.logo_url}
 				{#if showPoolTv}<span class="divider"></span>{/if}
@@ -79,23 +101,37 @@
 		</div>
 		<div class="meta">{meta}</div>
 		<div class="status">
-			{#if sponsor}
+			{#if sponsors.length}
 				<div class="sponsors">
-					{#key sponsor.id}
-						<img src={photoUrl(sponsor.logo_url)} alt={sponsor.name} in:rise={{ delay: 300 }} out:leave />
-					{/key}
+					{#each shown as sponsor, i (i)}
+						<div class="cell">
+							{#key rotating ? `${turn}:${sponsor.id}` : sponsor.id}
+								<div class="sponsor" in:rise={{ delay: 300 + i * 120 }} out:leave>
+									<span class="logo"><img src={photoUrl(sponsor.logo_url)} alt="" /></span>
+									<span class="who">
+										<span class="name">{sponsor.name}</span>
+										{#if sponsor.email}<span class="email">{sponsor.email}</span>{/if}
+									</span>
+								</div>
+							{/key}
+						</div>
+					{/each}
 				</div>
 				{#if label || status || branding?.name}<span class="divider"></span>{/if}
 			{/if}
-			{#if label}<span class="label">{label}</span>{/if}
-			{#if status === 'final'}
-				<span class="pill">{t('common.final')}</span>
-			{:else if status === 'free'}
-				<span class="pill idle">{t('common.free')}</span>
-			{/if}
-			{#if branding?.name}
-				{#if label || status}<span class="divider"></span>{/if}
-				<span class="account">{branding.name}</span>
+			{#if label || status || branding?.name}
+				<div class="tail" bind:clientWidth={tailWidth}>
+					{#if label}<span class="label">{label}</span>{/if}
+					{#if status === 'final'}
+						<span class="pill">{t('common.final')}</span>
+					{:else if status === 'free'}
+						<span class="pill idle">{t('common.free')}</span>
+					{/if}
+					{#if branding?.name}
+						{#if label || status}<span class="divider"></span>{/if}
+						<span class="account">{branding.name}</span>
+					{/if}
+				</div>
 			{/if}
 		</div>
 	</header>
@@ -108,7 +144,7 @@
 <style>
 	.frame {
 		--frame: rgb(13 15 14);
-		--header: 68px;
+		--header: 104px;
 		--footer: 68px;
 		--edge: 16px;
 		--radius: 18px;
@@ -154,16 +190,14 @@
 		height: var(--header);
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
+		gap: 18px;
 	}
-	/* Centred on the whole width, whatever the sides hold */
+	/* Centred in what the sides leave */
 	.meta {
-		position: absolute;
-		left: 50%;
-		transform: translateX(-50%);
-		max-width: 50%;
+		flex: 1 1 0;
+		min-width: 0;
 		text-align: center;
-		font-size: 17px;
+		font-size: 20px;
 		font-weight: 500;
 		color: rgb(255 255 255 / 0.6);
 		white-space: nowrap;
@@ -171,47 +205,111 @@
 		text-overflow: ellipsis;
 	}
 	.status,
-	.brands {
+	.brands,
+	.tail {
 		display: flex;
 		align-items: center;
-		gap: 14px;
-		min-width: 0;
+		gap: 18px;
+		flex: none;
 	}
 	.divider {
 		width: 1px;
-		height: 28px;
+		height: 36px;
 		background: rgb(255 255 255 / 0.16);
 		flex: none;
 	}
+	/* The Pool TV badge, sized to the taller header */
+	.brands > :global(img:first-child) {
+		width: 60px;
+		height: 60px;
+	}
 	/* Logos sit on the dark frame as they are: transparent PNGs look best */
 	.club {
-		height: 44px;
-		max-width: 220px;
+		height: 58px;
+		max-width: 260px;
 		object-fit: contain;
 	}
-	/* Sponsors take turns in one cell: the old one leaves upwards, the next rises in */
+	/* The sponsors: a row of cards, as many as the script finds room for */
 	.sponsors {
-		display: grid;
+		display: flex;
+		gap: 12px;
 		overflow: hidden;
 		/* Room for the blur, so the edges don't cut it */
-		padding: 6px 0;
-		margin: -6px 0;
-		box-sizing: content-box;
-		align-items: center;
-		justify-items: end;
-		height: 40px;
-		width: 180px;
+		padding: 8px 0;
+		margin: -8px 0;
 	}
-	.sponsors img {
+	/* One card's place: the old card leaves upwards, the next rises in */
+	.cell {
+		flex: none;
+		display: grid;
+		width: 240px;
+		height: 68px;
+	}
+	.sponsor {
 		grid-area: 1 / 1;
-		max-height: 40px;
-		max-width: 180px;
-		object-fit: contain;
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-width: 0;
+		box-sizing: border-box;
+		overflow: hidden;
+		padding: 6px 14px 6px 6px;
+		border-radius: 14px;
+		background: linear-gradient(180deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.03));
+		box-shadow:
+			inset 0 0 0 1px rgb(255 255 255 / 0.1),
+			inset 0 1px 0 rgb(255 255 255 / 0.06);
 		will-change: transform, opacity, filter;
+	}
+	/* A light tile, so dark and light logos both read */
+	.sponsor .logo {
+		flex: none;
+		display: grid;
+		place-items: center;
+		width: 84px;
+		height: 56px;
+		padding: 6px 10px;
+		box-sizing: border-box;
+		border-radius: 10px;
+		overflow: hidden;
+		background: rgb(255 255 255 / 0.94);
+	}
+	/* Fills the tile and is scaled down inside it, never past it */
+	.sponsor .logo img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		min-width: 0;
+		min-height: 0;
+		object-fit: contain;
+	}
+	.who {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		min-width: 0;
+	}
+	.who .name {
+		font-size: 18px;
+		font-weight: 700;
+		line-height: 1.15;
+		color: #fff;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.who .email {
+		font-size: 13px;
+		font-weight: 500;
+		letter-spacing: 0.01em;
+		color: rgb(255 255 255 / 0.55);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 	.label {
 		font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
-		font-size: 24px;
+		font-size: 28px;
 		font-weight: 600;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
@@ -220,7 +318,7 @@
 	}
 	.site {
 		margin-left: -4px;
-		font-size: 15px;
+		font-size: 17px;
 		font-weight: 600;
 		letter-spacing: 0.02em;
 		color: rgb(255 255 255 / 0.55);
@@ -231,7 +329,7 @@
 		min-width: 0;
 		max-width: 320px;
 		font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
-		font-size: 20px;
+		font-size: 24px;
 		font-weight: 500;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
@@ -261,7 +359,7 @@
 	/* Narrow browser sources, e.g. two overlays side by side at 960x1080 */
 	@media (max-width: 1200px) {
 		.frame {
-			--header: 56px;
+			--header: 80px;
 			--footer: 56px;
 			--edge: 10px;
 			--radius: 14px;
@@ -269,28 +367,46 @@
 		.meta {
 			font-size: 14px;
 		}
-		/* Leave the sides room for the sponsor */
-		.has-sponsor .meta {
-			max-width: 34%;
-		}
+		header,
 		.status,
-		.brands {
+		.brands,
+		.tail {
 			gap: 10px;
 		}
+		.brands > :global(img:first-child) {
+			width: 46px;
+			height: 46px;
+		}
 		.club {
-			height: 34px;
-			max-width: 140px;
+			height: 42px;
+			max-width: 150px;
 		}
 		.sponsors {
-			height: 30px;
-			width: 110px;
+			gap: 8px;
 		}
-		.sponsors img {
-			max-height: 30px;
-			max-width: 110px;
+		.cell {
+			width: 190px;
+			height: 54px;
+		}
+		.sponsor {
+			gap: 10px;
+			padding: 5px 12px 5px 5px;
+			border-radius: 12px;
+		}
+		.sponsor .logo {
+			width: 64px;
+			height: 44px;
+			padding: 5px 7px;
+			border-radius: 8px;
+		}
+		.who .name {
+			font-size: 16px;
+		}
+		.who .email {
+			font-size: 12px;
 		}
 		.divider {
-			height: 22px;
+			height: 28px;
 		}
 		.label {
 			font-size: 20px;

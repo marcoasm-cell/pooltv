@@ -3,25 +3,22 @@
 	import { errorMessage } from '#lib/format.ts';
 	import { t, tk } from '#lib/i18n/index.svelte.ts';
 	import { session } from '#lib/session.svelte.ts';
-	import type { Account, GameType, OverlayConfig, Sponsor, User } from '#lib/types.ts';
+	import type { Account, GameType, OverlayConfig, User } from '#lib/types.ts';
+	import Sponsors from './Sponsors.svelte';
 
 	let account = $state<Account | null>(null);
 	let users = $state<User[]>([]);
 	let gameTypes = $state<GameType[]>([]);
-	let sponsors = $state<Sponsor[]>([]);
-	let newSponsor = $state({ name: '', file: null as File | null });
-	let sponsorFileInput = $state<HTMLInputElement>();
 	let error = $state('');
 	let saved = $state(false);
 	let newUser = $state({ name: '', email: '', password: '', role: 'scorer' as User['role'] });
 	let newGame = $state({ key: '', name: '', scoring_mode: 'racks', default_target: 5, break_rule: 'alternate' });
 
 	async function load() {
-		[account, users, gameTypes, sponsors] = await Promise.all([
+		[account, users, gameTypes] = await Promise.all([
 			api<Account>('/account'),
 			api<User[]>('/users'),
-			api<GameType[]>('/game_types'),
-			api<Sponsor[]>('/sponsors')
+			api<GameType[]>('/game_types')
 		]);
 	}
 	$effect(() => {
@@ -56,26 +53,6 @@
 		const file = fileOf(e);
 		if (file) run(() => api('/account/logo', { method: 'PUT', body: logoForm(file) }));
 	};
-	const replaceSponsorLogo = (s: Sponsor, e: Event) => {
-		const file = fileOf(e);
-		if (file) run(() => api(`/sponsors/${s.id}`, { method: 'PATCH', body: logoForm(file) }));
-	};
-	const addSponsor = (e: SubmitEvent) => {
-		e.preventDefault();
-		const { name, file } = newSponsor;
-		if (!file) return;
-		run(async () => {
-			await api('/sponsors', { body: logoForm(file, { name }) });
-			newSponsor = { name: '', file: null };
-			if (sponsorFileInput) sponsorFileInput.value = '';
-		});
-	};
-	function moveSponsor(i: number, by: number) {
-		const ids = sponsors.map((s) => s.id);
-		[ids[i], ids[i + by]] = [ids[i + by], ids[i]];
-		run(() => api('/sponsors/order', { method: 'PUT', body: { ids } }));
-	}
-
 	const addUser = (e: SubmitEvent) => {
 		e.preventDefault();
 		run(async () => {
@@ -171,42 +148,7 @@
 			</label>
 		</div>
 
-		<h3 class="mb-1 text-sm font-semibold">{t('settings.sponsors')}</h3>
-		<p class="mb-3 text-xs text-gray-500">{t('settings.sponsorsHelp')}</p>
-		{#if sponsors.length}
-			<ul class="mb-4 divide-y divide-gray-100 text-sm">
-				{#each sponsors as s, i (s.id)}
-					<li class="flex flex-wrap items-center gap-3 py-2.5" class:opacity-50={!s.active}>
-						<label class="logo-preview h-10 w-28 cursor-pointer" title={t('settings.replaceLogo')}>
-							{#if s.logo_url}
-								<img src={photoUrl(s.logo_url)} alt={s.name} class="max-h-7 max-w-[96px] object-contain" />
-							{:else}
-								<span class="text-[11px] text-white/50">{t('settings.noLogo')}</span>
-							{/if}
-							<input type="file" accept="image/png,image/jpeg,image/webp" class="hidden" onchange={(e) => replaceSponsorLogo(s, e)} />
-						</label>
-						<input class="field min-w-0 flex-1" value={s.name}
-							onchange={(e) => run(() => api(`/sponsors/${s.id}`, { method: 'PATCH', body: { name: e.currentTarget.value } }))} />
-						<label class="flex items-center gap-1.5 text-xs text-gray-600">
-							<input type="checkbox" checked={s.active}
-								onchange={(e) => run(() => api(`/sponsors/${s.id}`, { method: 'PATCH', body: { active: e.currentTarget.checked } }))} />
-							{t('settings.onAir')}
-						</label>
-						<span class="inline-flex overflow-hidden rounded-md ring-1 ring-gray-200">
-							<button class="px-2 py-0.5 hover:bg-gray-100 disabled:opacity-30" disabled={i === 0} onclick={() => moveSponsor(i, -1)} aria-label={t('common.moveUp')}>↑</button>
-							<button class="border-l border-gray-200 px-2 py-0.5 hover:bg-gray-100 disabled:opacity-30" disabled={i === sponsors.length - 1} onclick={() => moveSponsor(i, 1)} aria-label={t('common.moveDown')}>↓</button>
-						</span>
-						<button class="link-danger" onclick={() => confirm(t('common.confirmRemove', { name: s.name })) && run(() => api(`/sponsors/${s.id}`, { method: 'DELETE' }))}>{t('common.remove')}</button>
-					</li>
-				{/each}
-			</ul>
-		{/if}
-		<form class="flex flex-wrap items-center gap-2 rounded-xl bg-gray-50 p-3 ring-1 ring-gray-200" onsubmit={addSponsor}>
-			<input class="field flex-1" placeholder={t('settings.sponsorNamePh')} bind:value={newSponsor.name} required />
-			<input bind:this={sponsorFileInput} class="field flex-1 text-sm" type="file" accept="image/png,image/jpeg,image/webp" required
-				onchange={(e) => (newSponsor.file = fileOf(e))} />
-			<button class="btn btn-primary">{t('settings.addSponsor')}</button>
-		</form>
+		<Sponsors />
 	</section>
 {/if}
 

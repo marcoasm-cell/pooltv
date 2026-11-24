@@ -1,5 +1,5 @@
 # What the overlays show around the scores: the club's name and logo, and the
-# sponsors in turn. admin: also the sponsors switched off.
+# sponsors in turn (logo, name and email, on a card). admin: also the sponsors switched off.
 module BrandingSerializer
   module_function
 
@@ -11,7 +11,7 @@ module BrandingSerializer
       name: account.name,
       logo_url: account.logo_path,
       sponsors: sponsors.map do |s|
-        data = { id: s.id, name: s.name, logo_url: s.logo_path }
+        data = { id: s.id, name: s.name, email: s.email, logo_url: s.logo_path }
         admin ? data.merge(active: s.active, position: s.position) : data
       end
     }

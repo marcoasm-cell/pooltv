@@ -5,7 +5,7 @@
   "split" gives each table its own camera window, divided by black bars, with the table
   overlay's scoreboard in each; ?cols=2 forces the number of columns.
   When every match on air has the same public page (e.g. one tournament) a QR code to it is
-  shown in a corner; ?qr=0 or the setting turns it off.
+  shown at the top, centred; ?qr=0 or the setting turns it off.
 -->
 <script lang="ts">
 	import '#lib/overlay/overlay.css';
@@ -209,7 +209,7 @@
 
 {#snippet qrCorner()}
 	{#if qr}
-		<div class="qr-corner" class:left={layout === 'sidebar'}>{#key qr}<QrBadge url={qr} />{/key}</div>
+		<div class="qr-corner">{#key qr}<QrBadge url={qr} />{/key}</div>
 	{/if}
 {/snippet}
 
@@ -251,13 +251,11 @@
 	}
 	.qr-corner {
 		position: absolute;
-		top: var(--pad);
-		right: var(--pad);
+		/* Below the panes' table name labels (top 14px, ~32px tall) */
+		top: max(var(--pad), 64px);
+		left: 50%;
+		transform: translateX(-50%);
 		z-index: 2;
-	}
-	.qr-corner.left {
-		right: auto;
-		left: var(--pad);
 	}
 	/* Team score in the frame's bottom band (split layout) */
 	.tbar {
