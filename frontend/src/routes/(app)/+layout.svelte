@@ -10,6 +10,7 @@
 	import { session } from '#lib/session.svelte.ts';
 	import type { Account, User } from '#lib/types.ts';
 	import type { LayoutProps } from './$types';
+	import { settingsSections } from './settings/sections.ts';
 
 	let { children }: LayoutProps = $props();
 	let menuOpen = $state(false);
@@ -30,12 +31,17 @@
 		if (userOpen && userMenu && !userMenu.contains(e.target as Node)) userOpen = false;
 	}
 
-	const links = $derived([
+	type NavLink = { href: string; label: string; children?: { href: string; label: string }[] };
+	const links: NavLink[] = $derived([
 		{ href: '/dashboard', label: t('nav.live') },
 		{ href: '/tournaments', label: t('nav.tournaments') },
 		{ href: '/players', label: t('nav.players') },
 		{ href: '/teams', label: t('nav.teams') },
-		...(session.canManage ? [{ href: '/tables', label: t('nav.tables') }, { href: '/settings', label: t('nav.settings') }] : []),
+		...(session.canManage ? [{ href: '/tables', label: t('nav.tables') }, {
+			href: '/settings',
+			label: t('nav.settings'),
+			children: settingsSections.map((s) => ({ href: s.href, label: t(s.label) }))
+		}] : []),
 		...(session.isAdmin ? [{ href: '/accounts', label: t('nav.accounts') }] : [])
 	]);
 
@@ -87,10 +93,32 @@
 					md:static md:mx-auto md:flex md:flex-row md:items-center md:gap-1 md:border-0 md:p-0 md:shadow-none">
 					{#each links as link (link.href)}
 						{@const active = page.url.pathname.startsWith(link.href)}
-						<a href={link.href} onclick={() => (menuOpen = false)}
-							class="nav-link {active ? 'text-gold-300' : 'text-white/85 hover:text-gold-300'}">
-							{link.label}
-						</a>
+						{#if link.children}
+							<!-- Sub-menu: a drop-down on hover/focus on desktop, indented under the link on phones -->
+							<div class="group relative">
+								<a href={link.href} onclick={() => (menuOpen = false)} aria-haspopup="true"
+									class="nav-link flex items-center gap-1 {active ? 'text-gold-300' : 'text-white/85 hover:text-gold-300'}">
+									{link.label}<span class="hidden text-[10px] opacity-60 md:inline" aria-hidden="true">▾</span>
+								</a>
+								<div class="flex flex-col pb-1 pl-4 md:invisible md:absolute md:top-full md:left-0 md:w-60 md:pt-3 md:pb-0 md:pl-0 md:opacity-0 md:transition
+									md:group-hover:visible md:group-hover:opacity-100 md:group-focus-within:visible md:group-focus-within:opacity-100">
+									<div class="flex flex-col md:overflow-hidden md:rounded-xl md:bg-white md:py-1 md:shadow-2xl md:ring-1 md:ring-black/5">
+										{#each link.children as child (child.href)}
+											{@const childActive = page.url.pathname.startsWith(child.href)}
+											<a href={child.href} onclick={(e) => { menuOpen = false; e.currentTarget.blur(); }}
+												class="sub-link {childActive ? 'text-gold-300 md:bg-gray-50 md:text-gold-700' : 'text-white/70 hover:text-gold-300 md:text-gray-700 md:hover:bg-gray-50 md:hover:text-gray-900'}">
+												{child.label}
+											</a>
+										{/each}
+									</div>
+								</div>
+							</div>
+						{:else}
+							<a href={link.href} onclick={() => (menuOpen = false)}
+								class="nav-link {active ? 'text-gold-300' : 'text-white/85 hover:text-gold-300'}">
+								{link.label}
+							</a>
+						{/if}
 					{/each}
 				</div>
 
@@ -157,5 +185,9 @@
 
 	.nav-link {
 		@apply px-3 py-2.5 font-condensed text-[15px] font-semibold tracking-[0.12em] uppercase transition-colors md:py-1;
+	}
+
+	.sub-link {
+		@apply px-3 py-2 text-sm transition-colors md:px-4 md:py-2.5;
 	}
 </style>
